@@ -4,7 +4,7 @@
 open NUnit.Framework
 open FsUnit
 open Chain
-open JungleScheduler
+open Scheduler
 
 [<TestFixture>]
 type ProcessesTests() =

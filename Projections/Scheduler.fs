@@ -1,4 +1,4 @@
-﻿module JungleScheduler
+﻿module Scheduler
 
 open System.Collections.Generic
 

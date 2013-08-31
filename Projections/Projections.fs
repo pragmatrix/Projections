@@ -1,16 +1,13 @@
-﻿module JungleProcesses
+﻿module Projections
 
-open JungleScheduler
+open Scheduler
 open Chain
 
 open System.Collections.Generic
 open System.Linq
 
-type Revision = uint64
-type RevisionRange = Revision * Revision // inclusive
-
 type IProjector =
-    // invalidates this process and all referrers and and returns the lowest transaction count for this process.
+    // invalidates this projection and all referrers
     abstract member invalidate : IScheduler -> unit
     abstract member addReferrer : IProjector -> unit
     abstract member removeReferrer : IProjector -> unit
@@ -34,11 +31,11 @@ type Evaluator<'a> = EvaluationContext -> (EvaluationResult<'a> -> unit) -> unit
 
 type Dependency = IChain * IProjector
 
-type DiscreteProcess<'a>(_evaluator : Evaluator<'a>) =
+type Projector<'a>(_evaluator : Evaluator<'a>) =
 
-    // our dependencies and their chain links
+    // dependencies and their chain links
     let mutable _dependencies : Dependencies = Dependencies()
-    // our referrers, the processes that depend on us
+    // referrers, the processes that depend on us
     let mutable _referrers : Referrers = Referrers()
     // the begin of our value chain, the first value in case we are valid, set to _end when we are invalid.
     let mutable _begin : Chain<'a> = Chain.empty()
@@ -94,7 +91,7 @@ type ProcessM<'a> =
     | ProcessEvaluate of Evaluator<'a>
     | ProcessYield of 'a
 
-type Dictionary<'k,'v> with
+type private Dictionary<'k,'v> with
     member this.TryGet(k : 'k) : 'v option =
         match this.TryGetValue k with
         | true, v -> Some v
