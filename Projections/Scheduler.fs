@@ -6,7 +6,6 @@ type IScheduler =
     abstract member schedule : (unit -> unit) -> unit
     abstract member run : unit -> unit
 
-
 type Scheduled<'a> = 
     | Schedule of (IScheduler -> ('a -> unit) -> unit)
     | Value of 'a
@@ -34,6 +33,5 @@ type ScheduledBuilder() =
 
     member this.Return value : Scheduled<'a> =
         Value value
-
 
 type scheduled = SchedulerBuilder

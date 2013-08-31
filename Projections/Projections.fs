@@ -9,30 +9,30 @@ open System.Linq
 type Revision = uint64
 type RevisionRange = Revision * Revision // inclusive
 
-type IProcess =
+type IProjector =
     // invalidates this process and all referrers and and returns the lowest transaction count for this process.
     abstract member invalidate : IScheduler -> unit
-    abstract member addReferrer : IProcess -> unit
-    abstract member removeReferrer : IProcess -> unit
+    abstract member addReferrer : IProjector -> unit
+    abstract member removeReferrer : IProjector -> unit
 
-type IProcess<'a> =
-    inherit IProcess
+type IProjector<'a> =
+    inherit IProjector
     // evaluates this process and notifies if the values have been produced.
     abstract member evaluate : IScheduler -> (unit -> unit) -> unit
     abstract member values : Chain<'a>
 
 
-type DependencyRecord = IProcess * IChain
+type DependencyRecord = IProjector * IChain
 
-type Dependencies = Dictionary<IProcess, IChain>
-type Referrers = HashSet<IProcess>
+type Dependencies = Dictionary<IProjector, IChain>
+type Referrers = HashSet<IProjector>
 
 type EvaluationContext = Dependencies * IScheduler
 type EvaluationResult<'a> = { values: 'a list; dependencies: DependencyRecord list }
 
 type Evaluator<'a> = EvaluationContext -> (EvaluationResult<'a> -> unit) -> unit
 
-type Dependency = IChain * IProcess
+type Dependency = IChain * IProjector
 
 type DiscreteProcess<'a>(_evaluator : Evaluator<'a>) =
 
@@ -46,7 +46,7 @@ type DiscreteProcess<'a>(_evaluator : Evaluator<'a>) =
     let mutable _end : Chain<'a> = _begin
     let mutable _valid : bool = false
 
-    interface IProcess<'a>
+    interface IProjector<'a>
         with 
             member this.invalidate scheduler = this.invalidate scheduler
             member this.evaluate scheduler res = this.evaluateAsync scheduler res
@@ -61,6 +61,7 @@ type DiscreteProcess<'a>(_evaluator : Evaluator<'a>) =
         if _valid then evalRes()
         else
         _evaluator (_dependencies, scheduler) (fun res ->
+            assert (not _valid)
             let newValues = res.values
             let dependencyRecords = res.dependencies
 
@@ -99,13 +100,13 @@ type Dictionary<'k,'v> with
         | true, v -> Some v
         | false, _ -> None
 
-type GeneratorBuilder() = 
-    member this.Bind (dependency: IProcess<'a>, cont: 'a seq -> ProcessM<'b>) : ProcessM<'b> =
+type ProjectorBuilder() = 
+    member this.Bind (dependency: IProjector<'a>, cont: 'a seq -> ProcessM<'b>) : ProcessM<'b> =
         fun (context : EvaluationContext) resultCallback ->
             let dependencies = fst context
             let scheduler = snd context
             dependency.evaluate scheduler (fun () ->
-                let dep = dependency :> IProcess
+                let dep = dependency :> IProjector
                 let values, newDependency = 
                     match dependencies.TryGet dep with
                     | Some chain -> 
@@ -126,4 +127,4 @@ type GeneratorBuilder() =
     member this.Yield (value: 'b) : ProcessM<'b> =
         ProcessYield value
 
-let generator = new GeneratorBuilder()
+let projector = new ProjectorBuilder()
