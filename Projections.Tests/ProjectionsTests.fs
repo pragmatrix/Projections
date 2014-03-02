@@ -9,9 +9,9 @@ open Scheduler
 [<TestFixture>]
 type ProcessesTests() =
 
-    member this.instantiateGenerator() = 
-        let x = input [10]
-        let y = input [10]
+    member this.instantiateAndProject() = 
+        let x = signal [10]
+        let y = signal [10]
         let p = projector {
             let! x = x
             let! y = y
